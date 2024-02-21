@@ -8,6 +8,7 @@ from io import BytesIO
 import sys
 from fuzzywuzzy import fuzz
 from itertools import combinations
+from datetime import datetime
 
 def extract_tables_from_pdf(base64_pdf_data):
     pdf_file_path = BytesIO(base64.b64decode(base64_pdf_data))
@@ -47,6 +48,8 @@ def clean_dataframe(df):
         if col not in ['Venue', 'Course Code']:
             df[col] = df[col].replace('\n', ' ', regex=True)
     df['Venue'] = df['Venue'].replace('(?!\nACCRA)\n', ' - ', regex=True)
+    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|BASEMENT|BASE|UPPER)\b', '', part).strip() for part in venue.split(', ')]))
+    df['Time'] = df['Time'].str.replace(r'\.$', '', regex=True).str.replace('.', ':')
     df = df.assign(Venue=df['Venue'].str.split('\n')).explode('Venue')
     df['Venue'] = df['Venue'].apply(clean_venue)
     df['Course Code'] = df['Course Code'].replace('\n(?=\d)', ' ', regex=True)
@@ -58,21 +61,65 @@ def clean_dataframe(df):
     df.rename(columns={'Day/Dat e': 'Date'}, inplace=True)
     return df
 
+def split_and_transform_time(time_str):
+    time_str = time_str.lower()
+
+    parts = time_str.split('-')
+    start_time, end_time = None, None
+
+    if len(parts) == 2:
+        start_time, end_time = parts[0].strip(), parts[1].strip()
+    elif len(parts) == 3:
+        if ":" in parts[0]:
+            start_time = parts[0].strip()
+            end_time = parts[1].strip() + ":" + parts[2].strip()
+        else:
+            start_time = parts[0].strip() + ":" + parts[1].strip()
+            end_time = parts[2].strip()
+
+    start_time = start_time.replace('am', '').replace('pm', '')
+    end_time = end_time.replace('am', '').replace('pm', '')
+
+    if ":" not in start_time:
+        start_time += ":00"
+    if ":" not in end_time:
+        end_time += ":00"
+
+    start_hour = int(start_time.split(':')[0])
+    if 8 <= start_hour < 12:
+        start_time += 'am'
+    else:
+        start_time += 'pm'
+
+    end_hour = int(end_time.split(':')[0])
+    if 8 <= end_hour < 12:
+        end_time += 'am'
+    else:
+        end_time += 'pm'
+
+    if 'pm' in start_time and 'am' in end_time:
+        end_time = end_time.replace('am', 'pm')
+
+    try:
+        start_time_obj = datetime.strptime(start_time, '%I:%M%p')
+        end_time_obj = datetime.strptime(end_time, '%I:%M%p')
+        start_time = start_time_obj.strftime('%I:%M%p').lower()
+        end_time = end_time_obj.strftime('%I:%M%p').lower()
+    except ValueError:
+        pass
+
+    return start_time, end_time
+
 def split_time_column(df):
     df['Time'] = df['Time'].str.replace('–', '-', regex=False)
     df['Time'] = df['Time'].str.lower()
     time_index = df.columns.get_loc('Time')
-    time_df = df['Time'].str.split('-', expand=True)
-    time_df.columns = ['Start Time', 'End Time']
+    df['Start Time'], df['End Time'] = zip(*df['Time'].apply(split_and_transform_time))
+    df['Start Time'] = df['Start Time'].str.replace(' ', '').apply(lambda x: ':'.join(str(int(i)).zfill(2) if i.isdigit() else i for i in x.split(':')))
+    df['End Time'] = df['End Time'].str.replace(' ', '').apply(lambda x: ':'.join(str(int(i)).zfill(2) if i.isdigit() else i for i in x.split(':')))
     df = df.drop('Time', axis=1)
-    df = pd.concat([df.iloc[:, :time_index], time_df, df.iloc[:, time_index:]], axis=1)
-    df['Start Time'] = df['Start Time'].str.strip()
-    df['End Time'] = df['End Time'].str.strip()
-    df['Start Time'] = df.apply(lambda row: row['Start Time'] + row['End Time'][-2:] if 'am' not in row['Start Time'] and 'pm' not in row['Start Time'] else row['Start Time'], axis=1)
-    df['Start Time'] = df['Start Time'].apply(lambda x: x if ':' in x else x.replace('am', ':00am').replace('pm', ':00pm'))
-    df['End Time'] = df['End Time'].apply(lambda x: x if ':' in x else x.replace('am', ':00am').replace('pm', ':00pm'))
-    df['Start Time'] = df['Start Time'].str.replace(' :', ':').str.replace(' am', 'am').str.replace(' pm', 'pm')
-    df['End Time'] = df['End Time'].str.replace(' :', ':').str.replace(' am', 'am').str.replace(' pm', 'pm')
+    df.insert(time_index, 'Start Time', df.pop('Start Time'))
+    df.insert(time_index + 1, 'End Time', df.pop('End Time'))
     return df
 
 def clean_invigilators(df):
@@ -127,7 +174,7 @@ def correct_date_column(df):
     df['Month'] = df['Month'].str.strip()  
     df['Day'] = df['Day'].apply(lambda x: '0' + x if len(x) == 1 else x) 
     df['Month'] = df['Month'].apply(lambda x: x[:2] if len(x) > 2 else x)
-    df.reset_index(drop=True, inplace=True)  # Reset the DataFrame's index
+    df.reset_index(drop=True, inplace=True)
     for i in range(1, len(df)):
         if len(df.loc[i, 'Month']) == 1:
             j = i - 1
@@ -149,6 +196,7 @@ def invigilators_main(base64_pdf_data):
     df = df[df['Invigilators'].str.strip() != '']
     grouped_df = group_by_invigilator(df)
     grouped_df = grouped_df.rename(columns={"Invigilators": "Invigilator"})
+    grouped_df.to_csv("invigilators.csv", index=False)
     invigilators_schedule = grouped_df.to_dict(orient='records')
     return {"invigilators_schedule": invigilators_schedule}
 
