@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["dataframe"]
+  "cSpell.words": ["dataframe"],
+  "python.analysis.autoImportCompletions": true
 }

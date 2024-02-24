@@ -57,8 +57,8 @@ def clean_dataframe(df):
     df['Course Code'] = df['Course Code'].replace('(?<=[a-zA-Z])(?=\d)', ' ', regex=True)
     df.replace(to_replace=r'\n', value=' ', regex=True, inplace=True)
     df = df[~(df == df.columns).sum(axis=1).gt(1)]
-    df['Day/Dat e'] = df['Day/Dat e'].apply(clean_date)
-    df.rename(columns={'Day/Dat e': 'Date'}, inplace=True)
+    df['Day/Date'] = df['Day/Date'].apply(clean_date)
+    df.rename(columns={'Day/Date': 'Date'}, inplace=True)
     return df
 
 def split_and_transform_time(time_str):
@@ -188,7 +188,9 @@ def correct_date_column(df):
 
 def invigilators_main(base64_pdf_data):
     tables = extract_tables_from_pdf(base64_pdf_data=base64_pdf_data)
-    df = pd.DataFrame(tables[1:], columns=tables[0])
+    column_headers = ['Day/Date', 'Course Code', 'Course Name', 'No. of Students', 'Time', 'Venue', 'Invigilators']
+    df = pd.DataFrame(tables[1:], columns=column_headers)
+    # df.to_csv("invigilators.csv", index=False)
     df = clean_dataframe(df)
     df = split_time_column(df)
     df = correct_date_column(df)
