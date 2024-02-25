@@ -23,13 +23,13 @@ def extract_tables_from_pdf(base64_pdf_data):
 def clean_venue(venue):
     venue = re.sub(r'[-.]', '', venue).strip()
     venue = re.sub(r'\s+', ' ', venue)
-    venue = re.sub(r'.*?(?=PG|SMA|SAARAH MENSAH AUD|SAARAH MENSAH AUDITORIUM|BLOCK)', '', venue)
+    venue = re.sub(r'.*?(?=PG|SMA|SAARAH MENSAH AUD|SAARAH MENSAH AUDITORIUM|BLOCK|BLK)', '', venue)
     venue = re.sub(r'\d', '', venue)
+    venue = re.sub(r'\bBLK\b', 'BLOCK', venue)
     if venue.strip().startswith('BLOCK'):
         venue = 'PG ' + venue
     venue = re.sub(r'\bSAARAH MENSAH AUD\b', 'SMA', venue)
     venue = re.sub(r'\bSAARAH MENSAH AUDITORIUM\b', 'SMA', venue)
-    venue = re.sub(r'\bBLK\b', 'BLOCK', venue)
     venue = re.sub(r'[^\w\s]', '', venue)
     return venue.strip()
 
@@ -49,7 +49,7 @@ def clean_dataframe(df):
         if col not in ['Venue', 'Course Code']:
             df[col] = df[col].replace('\n', ' ', regex=True)
     df['Venue'] = df['Venue'].replace('(?!\nACCRA)\n', ' - ', regex=True)
-    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|BASEMENT|BASE|UPPER|FF01|FF)\b', '', part).strip() for part in venue.split(', ')]))
+    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|1ST|1ST GALLARY|1ST GALLERY|BASEMENT|BASE|UPPER|FF01|FF)\b', '', part).strip() for part in venue.split(', ')]))
     df['Time'] = df['Time'].str.replace(r'\.$', '', regex=True).str.replace('.', ':')
     df = df.assign(Venue=df['Venue'].str.split('\n')).explode('Venue')
     df['Venue'] = df['Venue'].apply(clean_venue)
