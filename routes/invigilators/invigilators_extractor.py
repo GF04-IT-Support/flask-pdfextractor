@@ -30,6 +30,7 @@ def clean_venue(venue):
     venue = re.sub(r'\bSAARAH MENSAH AUD\b', 'SMA', venue)
     venue = re.sub(r'\bSAARAH MENSAH AUDITORIUM\b', 'SMA', venue)
     venue = re.sub(r'\bBLK\b', 'BLOCK', venue)
+    venue = re.sub(r'[^\w\s]', '', venue)
     return venue.strip()
 
 def clean_date(date_str):
@@ -48,7 +49,7 @@ def clean_dataframe(df):
         if col not in ['Venue', 'Course Code']:
             df[col] = df[col].replace('\n', ' ', regex=True)
     df['Venue'] = df['Venue'].replace('(?!\nACCRA)\n', ' - ', regex=True)
-    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|BASEMENT|BASE|UPPER)\b', '', part).strip() for part in venue.split(', ')]))
+    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|BASEMENT|BASE|UPPER|FF01|FF)\b', '', part).strip() for part in venue.split(', ')]))
     df['Time'] = df['Time'].str.replace(r'\.$', '', regex=True).str.replace('.', ':')
     df = df.assign(Venue=df['Venue'].str.split('\n')).explode('Venue')
     df['Venue'] = df['Venue'].apply(clean_venue)
@@ -197,7 +198,7 @@ def invigilators_main(base64_pdf_data):
     df = df[df['Invigilators'].str.strip() != '']
     grouped_df = group_by_invigilator(df)
     grouped_df = grouped_df.rename(columns={"Invigilators": "Invigilator"})
-    grouped_df.to_csv("invigilators.csv", index=False)
+    # grouped_df.to_csv("invigilators.csv", index=False)
     invigilators_schedule = grouped_df.to_dict(orient='records')
     return {"invigilators_schedule": invigilators_schedule}
 
