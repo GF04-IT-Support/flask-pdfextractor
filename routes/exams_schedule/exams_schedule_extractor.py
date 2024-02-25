@@ -1,3 +1,4 @@
+from importlib.resources.readers import remove_duplicates
 import pdfplumber
 import pandas as pd
 import sys
@@ -200,6 +201,41 @@ def correct_date_column(df):
     df = df.drop(['Day', 'Month', 'Years'], axis=1)
     return df
 
+def merge_similar_rows(df):
+    grouped = df.groupby(['Date', 'Start Time', 'End Time'])
+    merged_data = [] 
+    
+    for _, group in grouped:
+        if len(group) > 1:
+            group.sort_index(inplace=True)
+            new_row = group.iloc[0].copy()
+                    
+            years = set()
+            exam_codes = set()
+            venues = set()
+                    
+            for _, row in group.iterrows():
+                years.add(row['Year'])
+                exam_codes.update(v.strip() for v in row['Course Code'].split(','))
+                venues.update(v.strip() for v in row['Venue'].split(','))
+                                    
+            new_row['Year'] = ' or '.join(sorted(years))
+            final_exam_codes = remove_duplicates(exam_codes)
+            final_exam_codes = [code.strip() for code in exam_codes]  
+            new_row['Course Code'] = ', '.join(sorted(final_exam_codes))
+            final_venues = remove_duplicates(venues)
+            final_venues =[venue.strip() for venue in venues]
+            new_row['Venue'] = ', '.join(sorted(final_venues))
+           
+            merged_data.append(new_row)
+        else:
+            merged_data.append(group.iloc[0])
+    merged_df = pd.DataFrame(merged_data)
+    merged_df.sort_index(inplace=True)
+    return merged_df
+
+
+
 def exams_main(base64_pdf_data):
     tables, exam_name = extract_tables_from_pdf(base64_pdf_data=base64_pdf_data)
     df = create_dataframe(tables)
@@ -207,6 +243,8 @@ def exams_main(base64_pdf_data):
     df = split_time_column(df)
     df = correct_date_column(df)
     df = df.drop_duplicates(subset=['Date', 'Course Code', 'Venue', 'Start Time', 'End Time'])
+    df = merge_similar_rows(df)
+    df.to_csv("exams.csv", index=False)
     exams_schedule = df.to_dict(orient='records')
     return {"exams_schedule": exams_schedule, "exam_name": exam_name}
 

@@ -190,7 +190,6 @@ def invigilators_main(base64_pdf_data):
     tables = extract_tables_from_pdf(base64_pdf_data=base64_pdf_data)
     column_headers = ['Day/Date', 'Course Code', 'Course Name', 'No. of Students', 'Time', 'Venue', 'Invigilators']
     df = pd.DataFrame(tables[1:], columns=column_headers)
-    # df.to_csv("invigilators.csv", index=False)
     df = clean_dataframe(df)
     df = split_time_column(df)
     df = correct_date_column(df)
