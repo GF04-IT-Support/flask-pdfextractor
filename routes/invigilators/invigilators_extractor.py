@@ -77,7 +77,10 @@ def split_and_transform_time(time_str):
         else:
             start_time = parts[0].strip() + ":" + parts[1].strip()
             end_time = parts[2].strip()
+    
 
+    start_time = start_time.replace(' ', '')
+    end_time = end_time.replace(' ', '')
     start_time = start_time.replace('am', '').replace('pm', '')
     end_time = end_time.replace('am', '').replace('pm', '')
 
