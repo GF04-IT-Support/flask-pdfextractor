@@ -244,7 +244,7 @@ def exams_main(base64_pdf_data):
     df = correct_date_column(df)
     df = df.drop_duplicates(subset=['Date', 'Course Code', 'Venue', 'Start Time', 'End Time'])
     df = merge_similar_rows(df)
-    df.to_csv("exams.csv", index=False)
+    # df.to_csv("exams.csv", index=False)
     exams_schedule = df.to_dict(orient='records')
     return {"exams_schedule": exams_schedule, "exam_name": exam_name}
 
