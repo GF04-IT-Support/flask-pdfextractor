@@ -105,8 +105,9 @@ def clean_dataframe(df):
         if col not in ['Venue', 'Course Code', 'Time']:
             df[col] = df[col].replace('\n', ' ', regex=True)
     df['Time'] = df['Time'].str.replace(r'\.$', '', regex=True).str.replace('.', ':')
-    df['Venue'] = df['Venue'].apply(lambda x: ', '.join([re.sub(r'.*?(?=PG|SMA|SAARAH MENSAH AUD|SAARAH MENSAH AUDITORIUM)', '', line) for line in x.split('\n')]) if '\n' in x else x)
-    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|BASEMENT|BASE|UPPER)\b', '', part).strip() for part in venue.split(', ')]))
+    df['Venue'] = df['Venue'].replace({'SAARAH MENSAH AUD': 'SMA', 'SAARAH MENSAH AUDITORIUM': 'SMA', 'BLK': 'BLOCK'}, regex=True)
+    df['Venue'] = df['Venue'].apply(lambda x: ', '.join([re.sub(r'.*?(?=PG|SMA)', '', line) for line in x.split('\n')]) if '\n' in x else re.sub(r'.*?(?=PG|SMA|SAARAH MENSAH AUD|SAARAH MENSAH AUDITORIUM)', '', x))
+    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|1ST|1ST GALLARY|1ST GALLERY|BASEMENT|BASE|UPPER|FF01|FF)\b', '', part).strip() for part in venue.split(', ')]))
     df['Venue'] = df['Venue'].apply(lambda x: x.translate(str.maketrans('', '', string.punctuation.replace(',', ''))))  
     df['Course Code'] = df['Course Code'].replace('\n(?=\d)', ' ', regex=True)
     df['Course Code'] = df['Course Code'].replace('\n', ', ', regex=True)
@@ -116,7 +117,6 @@ def clean_dataframe(df):
     df['Day/Date'] = df['Day/Date'].apply(clean_date)
     df.rename(columns={'Day/Date': 'Date'}, inplace=True)
     df['Course Code'] = df['Course Code'].apply(lambda x: ', '.join(word.strip() for word in x.split(',')))
-    df['Venue'] = df['Venue'].replace({'SAARAH MENSAH AUD': 'SMA', 'SAARAH MENSAH AUDITORIUM': 'SMA', 'BLK': 'BLOCK'}, regex=True)
     df['Venue'] = df['Venue'].apply(clean_venue)
     df['Venue'] = df['Venue'].apply(lambda x: ', '.join(map(str.strip, x.split(','))))
     return df
