@@ -49,7 +49,7 @@ def clean_dataframe(df):
         if col not in ['Venue', 'Course Code']:
             df[col] = df[col].replace('\n', ' ', regex=True)
     df['Venue'] = df['Venue'].replace('(?!\nACCRA)\n', ' - ', regex=True)
-    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLERY|1ST|1ST GALLARY|1ST GALLERY|BASEMENT|BASE|UPPER|FF01|FF)\b', '', part).strip() for part in venue.split(', ')]))
+    df['Venue'] = df['Venue'].apply(lambda venue: ', '.join([re.sub(r'\b(?:GALLARY|GALLERY|1ST|1ST GALLARY|1ST GALLERY|BASEMENT|BASE|UPPER|FF01|FF)\b', '', part).strip() for part in venue.split(', ')]))
     df['Time'] = df['Time'].str.replace(r'\.$', '', regex=True).str.replace('.', ':')
     df = df.assign(Venue=df['Venue'].str.split('\n')).explode('Venue')
     df['Venue'] = df['Venue'].apply(clean_venue)
