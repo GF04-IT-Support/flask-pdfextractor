@@ -10,4 +10,5 @@ app.register_blueprint(invigilators_bp, url_prefix='/invigilators')
 app.register_blueprint(exams_schedule_bp, url_prefix='/exams-schedule')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8080)
+    app.run(debug=True, host='0.0.0.0', port=8080)
+
